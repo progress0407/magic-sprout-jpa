@@ -16,5 +16,4 @@ class SproutMimicJpaApplicationTests {
 	void contextLoads() {
 		itemRepository.findById(1L);
 	}
-
 }

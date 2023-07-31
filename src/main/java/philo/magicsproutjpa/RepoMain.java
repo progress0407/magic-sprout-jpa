@@ -9,19 +9,14 @@ public class RepoMain {
 
 	public static void main(String[] args) {
 
-		EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("magic-sprout-jpa");
-		EntityManager entityManager = entityManagerFactory.createEntityManager();
-
+		ItemRepository itemRepository = new ItemRepository();
 
 		Item item = new Item("black jean");
 
-		System.out.println("before save:: item.getId() = " + item.getId());
+		itemRepository.save(item);
 
-		EntityTransaction transaction = entityManager.getTransaction();
-		transaction.begin();
-		entityManager.persist(item);
-		transaction.commit();
+		Item foundItem = itemRepository.findById(item.getId());
 
-		System.out.println("after save:: item.getId() = " + item.getId());
+		System.out.println("foundItem = " + foundItem);
 	}
 }
