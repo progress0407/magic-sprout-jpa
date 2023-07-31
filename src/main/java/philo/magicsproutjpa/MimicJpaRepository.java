@@ -2,6 +2,7 @@ package philo.magicsproutjpa;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.List;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -43,11 +44,24 @@ public abstract class MimicJpaRepository<T, ID> {
 		return entity;
 	}
 
+	List<T> findAll() {
+
+		String selectQuery = "select e from " + getEntityName() + " e";
+
+		return entityManager
+				.createQuery(selectQuery, getEntityType())
+				.getResultList();
+	}
+
 	T findById(ID id) {
 
 		Class<T> entityType = getEntityType();
 
 		return entityManager.find(entityType, id);
+	}
+
+	private String getEntityName() {
+		return getEntityType().getSimpleName();
 	}
 
 	@SuppressWarnings("unchecked")
