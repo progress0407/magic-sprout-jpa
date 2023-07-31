@@ -21,11 +21,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public abstract class MimicJpaRepository<T, ID> {
 
+	public static final int ENTITY_TYPE_INDEX = 0;
 	private final EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("magic-sprout-jpa");
 	private final EntityManager entityManager = entityManagerFactory.createEntityManager();
 
 	T save(T entity) {
-		Class clazz = getClazz();
 
 		EntityTransaction transaction = entityManager.getTransaction();
 
@@ -37,23 +37,26 @@ public abstract class MimicJpaRepository<T, ID> {
 		catch (Exception e) {
 			transaction.rollback();
 			log.info("transaction rollback !");
-			throw new RuntimeException(e);
+			throw new MimicJpaCrudException(e);
 		}
 
 		return entity;
 	}
 
 	T findById(ID id) {
-		Class clazz = getClazz();
-		return (T) entityManager.find(clazz, id);
+
+		Class<T> entityType = getEntityType();
+
+		return entityManager.find(entityType, id);
 	}
 
-	private Class getClazz() {
-		return (Class) getType();
-	}
+	@SuppressWarnings("unchecked")
+	private Class<T> getEntityType() {
 
-	private Type getType() {
-		return ((ParameterizedType) getClass().getGenericSuperclass())
-				.getActualTypeArguments()[0];
+		ParameterizedType superclass = (ParameterizedType) getClass().getGenericSuperclass();
+		Type[] typeArguments = superclass.getActualTypeArguments();
+		Type typeArgument = typeArguments[ENTITY_TYPE_INDEX];
+
+		return (Class<T>) typeArgument;
 	}
 }
