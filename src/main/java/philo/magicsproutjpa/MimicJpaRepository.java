@@ -3,7 +3,9 @@ package philo.magicsproutjpa;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
+import jakarta.persistence.Id;
 import jakarta.persistence.Persistence;
+import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
@@ -26,7 +28,15 @@ public abstract class MimicJpaRepository<T, ID> {
   private final EntityManager entityManager = createEntityManager();
 
   T save(T entity) {
-    executeInTransaction(() -> entityManager.persist(entity));
+
+    ID id = getId(entity);
+
+    if(isNewEntity(id)) {
+      executeInTransaction(() -> entityManager.persist(entity));
+    } else {
+      executeInTransaction(() -> entityManager.merge(entity));
+    }
+
     return entity;
   }
 
@@ -108,6 +118,25 @@ public abstract class MimicJpaRepository<T, ID> {
     return entityManagerFactory.createEntityManager();
   }
 
+
+  private boolean isNewEntity(ID id) {
+    return id == null || entityManager.find(getEntityType(), id) == null;
+  }
+
+
+  private ID getId(T entity) {
+    for (Field field : getEntityType().getDeclaredFields()) {
+      if (field.getAnnotation(Id.class) != null) {
+        try {
+          field.setAccessible(true);
+          return (ID) field.get((Object) entity);
+        } catch (IllegalAccessException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+    throw new RuntimeException("Id field not found");
+  }
 
   @SuppressWarnings("unchecked")
   private Class<T> getEntityType() {

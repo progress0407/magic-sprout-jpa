@@ -34,6 +34,25 @@ class ItemRepositoryTests {
     );
   }
 
+
+  @DisplayName("[save - update] 리포지토리는 엔티티를 저장하고 불러올 수 있다")
+  @Test
+  void update() {
+    // given
+    Item item = new Item("black jean");
+    itemRepository.save(item);
+
+    // when
+    item.changeName("blue jean");
+    itemRepository.save(item);
+
+    // then
+    Item foundItem = itemRepository.findById(item.getId());
+
+    assertThat(foundItem.getName()).isEqualTo("blue jean");
+  }
+
+
   @DisplayName("[findAll] 리포지토리는 엔티티를 모두 불러올 수 있다")
   @Test
   void findAll() {
@@ -72,6 +91,7 @@ class ItemRepositoryTests {
     assertThat(all).isEmpty();
   }
 
+
   @DisplayName("[delete] 리포지토리는 ID로 엔티티를 삭제할 수 있다")
   @Test
   void delete() {
@@ -87,6 +107,7 @@ class ItemRepositoryTests {
 
     assertThat(all).isEmpty();
   }
+
 
   @DisplayName("[count] 리포지토리는 record 개수를 조회할 수 있다")
   @Test
