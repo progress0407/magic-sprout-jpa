@@ -21,10 +21,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public abstract class MimicJpaRepository<T, ID> {
 
-  public static final int ENTITY_TYPE_INDEX = 0;
-  private final EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory(
-      "magic-sprout-jpa");
-  private final EntityManager entityManager = entityManagerFactory.createEntityManager();
+  private static final int ENTITY_TYPE_INDEX = 0;
+
+  private final EntityManager entityManager = createEntityManager();
 
   T save(T entity) {
 
@@ -59,8 +58,33 @@ public abstract class MimicJpaRepository<T, ID> {
     return entityManager.find(entityType, id);
   }
 
-  private String getEntityName() {
-    return getEntityType().getSimpleName();
+  void deleteAll() {
+
+    String deleteQuery = "delete from " + getEntityName();
+
+    EntityTransaction transaction = entityManager.getTransaction();
+
+    try {
+      transaction.begin();
+
+      entityManager
+          .createQuery(deleteQuery)
+          .executeUpdate();
+
+      transaction.commit();
+    } catch (Exception e) {
+      transaction.rollback();
+      log.info("transaction rollback !");
+      throw new MimicJpaCrudException(e);
+    }
+  }
+
+  private EntityManager createEntityManager() {
+
+    EntityManagerFactory entityManagerFactory =
+        Persistence.createEntityManagerFactory("magic-sprout-jpa");
+
+    return entityManagerFactory.createEntityManager();
   }
 
   @SuppressWarnings("unchecked")
@@ -71,5 +95,10 @@ public abstract class MimicJpaRepository<T, ID> {
     Type typeArgument = typeArguments[ENTITY_TYPE_INDEX];
 
     return (Class<T>) typeArgument;
+  }
+
+  private String getEntityName() {
+
+    return getEntityType().getSimpleName();
   }
 }
