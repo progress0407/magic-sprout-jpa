@@ -27,22 +27,12 @@ public abstract class MimicJpaRepository<T, ID> {
 
   T save(T entity) {
 
-    EntityTransaction transaction = entityManager.getTransaction();
-
-    try {
-      transaction.begin();
-      entityManager.persist(entity);
-      transaction.commit();
-    } catch (Exception e) {
-      transaction.rollback();
-      log.info("transaction rollback !");
-      throw new MimicJpaCrudException(e);
-    }
+    executeInTransaction(() -> entityManager.persist(entity));
 
     return entity;
   }
 
-  List<T> findAll() {
+  public List<T> findAll() {
 
     String selectQuery = "select e from " + getEntityName() + " e";
 
@@ -51,30 +41,38 @@ public abstract class MimicJpaRepository<T, ID> {
         .getResultList();
   }
 
-  T findById(ID id) {
+  public T findById(ID id) {
 
     Class<T> entityType = getEntityType();
 
     return entityManager.find(entityType, id);
   }
 
-  void deleteAll() {
+  public void deleteAll() {
 
     String deleteQuery = "delete from " + getEntityName();
 
-    EntityTransaction transaction = entityManager.getTransaction();
+    executeInTransaction(() ->
+        entityManager
+            .createQuery(deleteQuery)
+            .executeUpdate()
+    );
+  }
 
+  private void executeInTransaction(VoidFunction function) {
+
+    EntityTransaction transaction = null;
     try {
+      transaction = entityManager.getTransaction();
       transaction.begin();
 
-      entityManager
-          .createQuery(deleteQuery)
-          .executeUpdate();
-
+      function.execute();
       transaction.commit();
     } catch (Exception e) {
-      transaction.rollback();
-      log.info("transaction rollback !");
+      if(transaction.isActive()) {
+        transaction.rollback();
+        log.info("transaction rollback !");
+      }
       throw new MimicJpaCrudException(e);
     }
   }

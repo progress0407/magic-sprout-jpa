@@ -17,7 +17,7 @@ class ItemRepositoryTests {
     itemRepository.deleteAll();
   }
 
-  @DisplayName("[save, findById] 저장하고 불러올 수 있어야 한다")
+  @DisplayName("[save, findById] 리포지토리는 엔티티를 저장하고 불러올 수 있다")
   @Test
   void save_findById() {
     // given
@@ -34,7 +34,7 @@ class ItemRepositoryTests {
     );
   }
 
-  @DisplayName("[findAll] 모두 불러올 수 있어야 한다")
+  @DisplayName("[findAll] 리포지토리는 엔티티를 모두 불러올 수 있다")
   @Test
   void findAll() {
     // given
@@ -54,7 +54,7 @@ class ItemRepositoryTests {
     );
   }
 
-  @DisplayName("[deleteAll] 모두 정상적으로 삭제되어야 한다")
+  @DisplayName("[deleteAll] 리포지토리는 엔티티를 모두 정상적으로 삭제할 수 있다")
   @Test
   void deleteAll() {
     // given
@@ -69,6 +69,6 @@ class ItemRepositoryTests {
     // then
     List<Item> all = itemRepository.findAll();
 
-    assertThat(all).hasSize(0);
+    assertThat(all).isEmpty();
   }
 }
