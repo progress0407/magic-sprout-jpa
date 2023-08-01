@@ -1,4 +1,4 @@
-package philo.magicsproutjpa;
+package philo.magicsproutjpa.core.support;
 
 @FunctionalInterface
 public interface VoidFunction {

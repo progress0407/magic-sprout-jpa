@@ -1,4 +1,4 @@
-package philo.magicsproutjpa;
+package philo.magicsproutjpa.core.support;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;

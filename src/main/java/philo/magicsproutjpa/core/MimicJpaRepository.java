@@ -1,4 +1,4 @@
-package philo.magicsproutjpa;
+package philo.magicsproutjpa.core;
 
 import static java.util.Arrays.stream;
 
@@ -14,6 +14,9 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import philo.magicsproutjpa.core.exception.MimicJpaCrudException;
+import philo.magicsproutjpa.core.exception.MimicJpaInnerException;
+import philo.magicsproutjpa.core.support.VoidFunction;
 
 /**
  * SimpleJpaRepository 처럼 JPA의 기능을 모방한 클래스입니다.
@@ -38,8 +41,7 @@ public abstract class MimicJpaRepository<T, ID> {
     assertIdGetterExists(entityType, fields);
   }
 
-  T save(T entity) {
-
+  public T save(T entity) {
     ID id = getIdValue(entity);
 
     if (isNewEntity(id)) {
@@ -53,7 +55,6 @@ public abstract class MimicJpaRepository<T, ID> {
 
 
   public List<T> findAll() {
-
     String selectQuery = "select e from " + getEntityName() + " e";
 
     return entityManager
@@ -61,37 +62,25 @@ public abstract class MimicJpaRepository<T, ID> {
         .getResultList();
   }
 
-
   public T findById(ID id) {
-
     Class<T> entityType = getEntityType();
 
     return entityManager.find(entityType, id);
   }
 
-
   public void deleteAll() {
-
     String deleteQuery = "delete from " + getEntityName();
 
-    executeInTransaction(() ->
-        entityManager
-            .createQuery(deleteQuery)
-            .executeUpdate()
-    );
+    executeInTransaction(() -> entityManager.createQuery(deleteQuery).executeUpdate());
   }
 
-
   public void delete(ID id) {
-
     T entity = entityManager.find(getEntityType(), id);
 
     executeInTransaction(() -> entityManager.remove(entity));
   }
 
-
   public long count() {
-
     String countQuery = "select count(e) from " + getEntityName() + " e";
 
     return entityManager
@@ -99,9 +88,7 @@ public abstract class MimicJpaRepository<T, ID> {
         .getSingleResult();
   }
 
-
   private void executeInTransaction(VoidFunction function) {
-
     EntityTransaction transaction = null;
     try {
       transaction = entityManager.getTransaction();
@@ -122,7 +109,6 @@ public abstract class MimicJpaRepository<T, ID> {
 
 
   private EntityManager createEntityManager() {
-
     EntityManagerFactory entityManagerFactory =
         Persistence.createEntityManagerFactory("magic-sprout-jpa");
 
@@ -135,7 +121,6 @@ public abstract class MimicJpaRepository<T, ID> {
   }
 
   private ID getIdValue(T entity) {
-
     Class<T> entityType = getEntityType();
     Field[] fields = entityType.getDeclaredFields();
     Field idField = stream(fields)
@@ -153,7 +138,6 @@ public abstract class MimicJpaRepository<T, ID> {
   }
 
   private void assertIdFieldExists(Field[] fields) {
-
     long idFieldCount = getIdFieldCount(fields);
 
     if (idFieldCount == 0) {
@@ -164,15 +148,12 @@ public abstract class MimicJpaRepository<T, ID> {
     }
   }
 
-
   @SuppressWarnings("OptionalGetWithoutIsPresent")
   private void assertIdGetterExists(Class<T> entity, Field[] fields) {
-
     extractIdGetterMethod(entity, fields);
   }
 
   private Method extractIdGetterMethod(Class<T> entity, Field[] fields) {
-
     Field idField = stream(fields)
         .filter(this::hasIdAnnotation)
         .findAny()
@@ -189,18 +170,14 @@ public abstract class MimicJpaRepository<T, ID> {
     }
   }
 
-
   private long getIdFieldCount(Field[] fields) {
-
     return stream(fields)
         .filter(this::hasIdAnnotation)
         .count();
   }
 
-
   @SuppressWarnings("unchecked")
   private Class<T> getEntityType() {
-
     ParameterizedType superclass = (ParameterizedType) getClass().getGenericSuperclass();
     Type[] typeArguments = superclass.getActualTypeArguments();
     Type typeArgument = typeArguments[ENTITY_TYPE_INDEX];
@@ -208,21 +185,16 @@ public abstract class MimicJpaRepository<T, ID> {
     return (Class<T>) typeArgument;
   }
 
-
   private String getEntityName() {
-
     return getEntityType().getSimpleName();
   }
-
 
   private boolean hasIdAnnotation(Field field) {
 
     return field.getAnnotation(Id.class) != null;
   }
 
-
   private ID extractId(T entity, Field field) {
-
     try {
       field.setAccessible(true);
       ID id = (ID) field.get((Object) entity);

@@ -1,4 +1,4 @@
-package philo.magicsproutjpa;
+package philo.magicsproutjpa.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -7,8 +7,10 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import philo.magicsproutjpa.domain.Item;
+import philo.magicsproutjpa.domain.ItemRepository;
 
-class ItemRepositoryTests {
+class ItemRepositoryTest {
 
   static ItemRepository itemRepository = new ItemRepository();
 
