@@ -26,11 +26,10 @@ public abstract class MimicJpaRepository<T, ID> {
   private final EntityManager entityManager = createEntityManager();
 
   T save(T entity) {
-
     executeInTransaction(() -> entityManager.persist(entity));
-
     return entity;
   }
+
 
   public List<T> findAll() {
 
@@ -41,12 +40,14 @@ public abstract class MimicJpaRepository<T, ID> {
         .getResultList();
   }
 
+
   public T findById(ID id) {
 
     Class<T> entityType = getEntityType();
 
     return entityManager.find(entityType, id);
   }
+
 
   public void deleteAll() {
 
@@ -59,6 +60,15 @@ public abstract class MimicJpaRepository<T, ID> {
     );
   }
 
+
+  public void delete(ID id) {
+
+    T entity = entityManager.find(getEntityType(), id);
+
+    executeInTransaction(() -> entityManager.remove(entity));
+  }
+
+
   private void executeInTransaction(VoidFunction function) {
 
     EntityTransaction transaction = null;
@@ -66,16 +76,19 @@ public abstract class MimicJpaRepository<T, ID> {
       transaction = entityManager.getTransaction();
       transaction.begin();
 
+      // Execute Actual Query
       function.execute();
+
       transaction.commit();
     } catch (Exception e) {
-      if(transaction.isActive()) {
+      if (transaction.isActive()) {
         transaction.rollback();
         log.info("transaction rollback !");
       }
       throw new MimicJpaCrudException(e);
     }
   }
+
 
   private EntityManager createEntityManager() {
 
@@ -84,6 +97,7 @@ public abstract class MimicJpaRepository<T, ID> {
 
     return entityManagerFactory.createEntityManager();
   }
+
 
   @SuppressWarnings("unchecked")
   private Class<T> getEntityType() {
@@ -94,6 +108,7 @@ public abstract class MimicJpaRepository<T, ID> {
 
     return (Class<T>) typeArgument;
   }
+
 
   private String getEntityName() {
 

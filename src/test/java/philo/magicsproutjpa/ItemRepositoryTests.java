@@ -71,4 +71,20 @@ class ItemRepositoryTests {
 
     assertThat(all).isEmpty();
   }
+
+  @DisplayName("[delete] 리포지토리는 ID로 엔티티를 삭제할 수 있다")
+  @Test
+  void delete() {
+    // given
+    Item item = new Item("black jean");
+    itemRepository.save(item);
+
+    // when
+    itemRepository.delete(item.getId());
+
+    // then
+    List<Item> all = itemRepository.findAll();
+
+    assertThat(all).isEmpty();
+  }
 }
