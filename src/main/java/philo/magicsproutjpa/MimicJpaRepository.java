@@ -8,11 +8,11 @@ import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.Id;
 import jakarta.persistence.Persistence;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
-import java.util.Objects;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -22,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
  * @param <ID> the type of the entity's identifier
  */
 
-@RequiredArgsConstructor
 @Slf4j
 public abstract class MimicJpaRepository<T, ID> {
 
@@ -30,9 +29,18 @@ public abstract class MimicJpaRepository<T, ID> {
 
   private final EntityManager entityManager = createEntityManager();
 
+  protected MimicJpaRepository() {
+    Class<T> entityType = getEntityType();
+
+    Field[] fields = entityType.getDeclaredFields();
+
+    assertIdFieldExists(fields);
+    assertIdGetterExists(entityType, fields);
+  }
+
   T save(T entity) {
 
-    ID id = getId(entity);
+    ID id = getIdValue(entity);
 
     if (isNewEntity(id)) {
       executeInTransaction(() -> entityManager.persist(entity));
@@ -126,19 +134,67 @@ public abstract class MimicJpaRepository<T, ID> {
     return id == null || entityManager.find(getEntityType(), id) == null;
   }
 
-  // todo getId() 메서드를 통해 id를 가져오는 방법을 개선해야 합니다.
-  // 현재는 @Id 어노테이션이 붙은 필드를 찾아서 reflection을 통해 값을 가져오는 방식입니다.
-  // 이 방식은 캡슐화를 깨는 방식이므로, 다른 방법을 찾아야 합니다.
-  private ID getId(T entity) {
+  private ID getIdValue(T entity) {
 
-    Field[] fields = getEntityType().getDeclaredFields();
+    Class<T> entityType = getEntityType();
+    Field[] fields = entityType.getDeclaredFields();
+    Field idField = stream(fields)
+        .filter(this::hasIdAnnotation)
+        .findAny()
+        .get();
+    Method idGetterMethod = extractIdGetterMethod(entityType, fields);
+    try {
+      return (ID) idGetterMethod.invoke(entity);
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException(e);
+    } catch (InvocationTargetException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private void assertIdFieldExists(Field[] fields) {
+
+    long idFieldCount = getIdFieldCount(fields);
+
+    if (idFieldCount == 0) {
+      throw new MimicJpaInnerException("Id field not found");
+
+    } else if (idFieldCount > 1) {
+      throw new MimicJpaInnerException("Multiple Id fields found");
+    }
+  }
+
+
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
+  private void assertIdGetterExists(Class<T> entity, Field[] fields) {
+
+    extractIdGetterMethod(entity, fields);
+  }
+
+  private Method extractIdGetterMethod(Class<T> entity, Field[] fields) {
+
+    Field idField = stream(fields)
+        .filter(this::hasIdAnnotation)
+        .findAny()
+        .get();
+
+    String idFieldName = idField.getName();
+
+    String idGetterMethodName = "get" + idFieldName.substring(0, 1).toUpperCase() + idFieldName.substring(1);
+
+    try {
+      return entity.getDeclaredMethod(idGetterMethodName);
+    } catch (NoSuchMethodException e) {
+      throw new MimicJpaInnerException("Id getter method not found", e);
+    }
+  }
+
+
+  private long getIdFieldCount(Field[] fields) {
 
     return stream(fields)
         .filter(this::hasIdAnnotation)
-        .map(field -> extractId(entity, field))
-        .filter(Objects::nonNull)
-        .findAny()
-        .orElse(null);
+        .count();
   }
 
 
