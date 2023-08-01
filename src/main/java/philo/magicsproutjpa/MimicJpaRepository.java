@@ -1,5 +1,7 @@
 package philo.magicsproutjpa;
 
+import static java.util.Arrays.stream;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
@@ -31,7 +33,7 @@ public abstract class MimicJpaRepository<T, ID> {
 
     ID id = getId(entity);
 
-    if(isNewEntity(id)) {
+    if (isNewEntity(id)) {
       executeInTransaction(() -> entityManager.persist(entity));
     } else {
       executeInTransaction(() -> entityManager.merge(entity));
@@ -81,11 +83,11 @@ public abstract class MimicJpaRepository<T, ID> {
 
   public long count() {
 
-      String countQuery = "select count(e) from " + getEntityName() + " e";
+    String countQuery = "select count(e) from " + getEntityName() + " e";
 
-      return entityManager
-          .createQuery(countQuery, Long.class)
-          .getSingleResult();
+    return entityManager
+        .createQuery(countQuery, Long.class)
+        .getSingleResult();
   }
 
 
@@ -123,20 +125,20 @@ public abstract class MimicJpaRepository<T, ID> {
     return id == null || entityManager.find(getEntityType(), id) == null;
   }
 
-
+  // todo getId() 메서드를 통해 id를 가져오는 방법을 개선해야 합니다.
+  // 현재는 @Id 어노테이션이 붙은 필드를 찾아서 reflection을 통해 값을 가져오는 방식입니다.
+  // 이 방식은 캡슐화를 깨는 방식이므로, 다른 방법을 찾아야 합니다.
   private ID getId(T entity) {
-    for (Field field : getEntityType().getDeclaredFields()) {
-      if (field.getAnnotation(Id.class) != null) {
-        try {
-          field.setAccessible(true);
-          return (ID) field.get((Object) entity);
-        } catch (IllegalAccessException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    }
-    throw new RuntimeException("Id field not found");
+
+    Field[] fields = getEntityType().getDeclaredFields();
+
+    return stream(fields)
+        .filter(this::hasIdAnnotation)
+        .map(field -> extractId(entity, field))
+        .findAny()
+        .orElse(null);
   }
+
 
   @SuppressWarnings("unchecked")
   private Class<T> getEntityType() {
@@ -152,5 +154,23 @@ public abstract class MimicJpaRepository<T, ID> {
   private String getEntityName() {
 
     return getEntityType().getSimpleName();
+  }
+
+
+  private boolean hasIdAnnotation(Field field) {
+
+    return field.getAnnotation(Id.class) != null;
+  }
+
+
+  private ID extractId(T entity, Field field) {
+
+    try {
+      field.setAccessible(true);
+      ID id = (ID) field.get((Object) entity);
+      return id;
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
