@@ -69,6 +69,16 @@ public abstract class MimicJpaRepository<T, ID> {
   }
 
 
+  public long count() {
+
+      String countQuery = "select count(e) from " + getEntityName() + " e";
+
+      return entityManager
+          .createQuery(countQuery, Long.class)
+          .getSingleResult();
+  }
+
+
   private void executeInTransaction(VoidFunction function) {
 
     EntityTransaction transaction = null;

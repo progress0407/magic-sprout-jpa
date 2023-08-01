@@ -87,4 +87,22 @@ class ItemRepositoryTests {
 
     assertThat(all).isEmpty();
   }
+
+  @DisplayName("[count] 리포지토리는 record 개수를 조회할 수 있다")
+  @Test
+  void count() {
+    // given
+    Item item1 = new Item("black jean");
+    Item item2 = new Item("black jean2");
+    Item item3 = new Item("black jean3");
+    itemRepository.save(item1);
+    itemRepository.save(item2);
+    itemRepository.save(item3);
+
+    // when
+    long recordCount = itemRepository.count();
+
+    // then
+    assertThat(recordCount).isEqualTo(3);
+  }
 }
