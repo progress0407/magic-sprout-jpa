@@ -11,6 +11,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -135,6 +136,7 @@ public abstract class MimicJpaRepository<T, ID> {
     return stream(fields)
         .filter(this::hasIdAnnotation)
         .map(field -> extractId(entity, field))
+        .filter(Objects::nonNull)
         .findAny()
         .orElse(null);
   }
