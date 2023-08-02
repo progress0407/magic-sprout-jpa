@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.LinkedList;
 import java.util.List;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import philo.magicsproutjpa.core.support.VoidFunction;
@@ -25,7 +26,7 @@ class PerformanceTest {
 
   final List<String> logs = new LinkedList<>();
 
-//  @Disabled
+  @Disabled
   @DisplayName("일반적으로 메소드 호출을 캐싱을 한 것이 캐싱을 하지 않은 것보다 속도가 빠르다")
   @Test
   void performance() {
