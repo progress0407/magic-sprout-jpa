@@ -1,38 +1,33 @@
 package philo.magicsproutjpa.core;
 
-import static java.util.Arrays.stream;
+import static philo.magicsproutjpa.core.support.MimicJpaReflectionUtils.delegateMethodInvoke;
+import static philo.magicsproutjpa.core.support.MimicJpaReflectionUtils.extractIdGetterMethod;
+import static philo.magicsproutjpa.core.support.MimicJpaReflectionUtils.getIdFieldCount;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
-import jakarta.persistence.Id;
-import jakarta.persistence.Persistence;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import philo.magicsproutjpa.core.exception.MimicJpaCrudException;
 import philo.magicsproutjpa.core.exception.MimicJpaInnerException;
+import philo.magicsproutjpa.core.support.MimicJpaReflectionUtils;
 import philo.magicsproutjpa.core.support.VoidFunction;
 
 /**
  * SimpleJpaRepository 처럼 JPA의 기능을 모방한 클래스입니다.
  *
- * @param <E>  the type of the entity
+ * @param <E> the type of the entity
  * @param <K> the type of the entity's identifier(Primary Key)
  */
 
 @Slf4j
 public abstract class MimicJpaRepository<E, K> {
 
-  private static final int ENTITY_TYPE_INDEX = 0;
+  private final EntityManager entityManager = EntityManagerFactoryFacade.createEntityManager();
 
-  private final EntityManager entityManager = createEntityManager();
-
-  private Method idGetterMethodCache = null;
+  private Method idGetterMethodCache = null; // 도메인 리포지토리 생성시 자동 초기화
 
   protected MimicJpaRepository() {
     Class<E> entityType = getEntityType();
@@ -97,7 +92,6 @@ public abstract class MimicJpaRepository<E, K> {
 
   /**
    * 특정 엔티티를 키 값으로 지웁니다.
-   * @param id
    */
   public void deleteById(K id) {
     E entity = entityManager.find(getEntityType(), id);
@@ -108,7 +102,6 @@ public abstract class MimicJpaRepository<E, K> {
    * 모든 엔티티의 갯수를 구합니다.
    * <br>
    * RDBMS 관점에서는 엔티티와 연결된 테이블의 모든 레코드를 조회합니다.
-   * <br>
    */
   public long count() {
     String countQuery = "select count(e) from " + getEntityName() + " e";
@@ -119,10 +112,12 @@ public abstract class MimicJpaRepository<E, K> {
 
   private void executeInTransaction(VoidFunction function) {
     EntityTransaction transaction = entityManager.getTransaction();
+    
     try {
       transaction.begin();
       function.execute(); // Execute Actual Query
       transaction.commit();
+      
     } catch (Exception e) {
       if (transaction.isActive()) {
         transaction.rollback();
@@ -132,32 +127,13 @@ public abstract class MimicJpaRepository<E, K> {
     }
   }
 
-  private EntityManager createEntityManager() {
-    EntityManagerFactory entityManagerFactory =
-        Persistence.createEntityManagerFactory("magic-sprout-jpa");
-
-    return entityManagerFactory.createEntityManager();
-  }
-
-  private boolean isNewEntity(K id) {
-    return id == null || entityManager.find(getEntityType(), id) == null;
-  }
-
-  private K getIdValue(E entity) {
-    try {
-      return (K) idGetterMethodCache.invoke(entity);
-    } catch (IllegalAccessException | InvocationTargetException e) {
-      throw new MimicJpaInnerException(e);
-    }
-  }
-
   private void assertIdFieldExists(Field[] fields) {
     long idFieldCount = getIdFieldCount(fields);
-
+    
     if (idFieldCount == 0) {
       throw new MimicJpaInnerException("Id field not found");
 
-    } else if (idFieldCount > 1) {
+    } else if (idFieldCount >= 2) {
       throw new MimicJpaInnerException("Multiple Id fields found");
     }
   }
@@ -166,6 +142,7 @@ public abstract class MimicJpaRepository<E, K> {
    * ID Getter가 존재하는지 여부를 조회 합니다.
    * <br>
    * 검증 성공시 해당 Method를 반환합니다.
+   *
    * @param entity 엔티티 타입 클래스
    * @param fields 위 클래스에 속하는 filed들
    * @return ID Getter Method
@@ -174,66 +151,20 @@ public abstract class MimicJpaRepository<E, K> {
     return extractIdGetterMethod(entity, fields);
   }
 
-  private Method extractIdGetterMethod(Class<E> entity, Field[] fields) {
-    String idGetterMethodName = extractIdGetterMethodName(fields);
-    try {
-      return entity.getDeclaredMethod(idGetterMethodName);
-    } catch (NoSuchMethodException e) {
-      throw new MimicJpaInnerException("Id getter method not found", e);
-    }
+  private boolean isNewEntity(K id) {
+    return id == null
+        || entityManager.find(getEntityType(), id) == null;
   }
 
-  @SuppressWarnings("OptionalGetWithoutIsPresent")
-  private String extractIdGetterMethodName(Field[] fields) {
-    Field idField = getIdField(fields);
-    String idFieldName = idField.getName();
-    return getIdGetterMethodName(idFieldName);
+  private K getIdValue(E entity) {
+    return delegateMethodInvoke(entity, idGetterMethodCache);
   }
 
-  @SuppressWarnings("OptionalGetWithoutIsPresent")
-  private Field getIdField(Field[] fields) {
-    return stream(fields)
-        .filter(this::hasIdAnnotation)
-        .findAny()
-        .get();
-  }
-
-  private static String getIdGetterMethodName(String idFieldName) {
-    return "get" + idFieldName.substring(0, 1).toUpperCase() + idFieldName.substring(1);
-  }
-
-  private long getIdFieldCount(Field[] fields) {
-    return stream(fields)
-        .filter(this::hasIdAnnotation)
-        .count();
-  }
-
-  @SuppressWarnings("unchecked")
   private Class<E> getEntityType() {
-    ParameterizedType superclass = (ParameterizedType) getClass().getGenericSuperclass();
-    Type[] typeArguments = superclass.getActualTypeArguments();
-    Type typeArgument = typeArguments[ENTITY_TYPE_INDEX];
-    return (Class<E>) typeArgument;
+    return MimicJpaReflectionUtils.getEntityType(this.getClass()); // delegate
   }
 
   private String getEntityName() {
     return getEntityType().getSimpleName();
-  }
-
-  private boolean hasIdAnnotation(Field field) {
-    return field.getAnnotation(Id.class) != null;
-  }
-
-  /**
-   * 성능 테스트 용으로 아직 지우지 않았다
-   */
-  private K extractId(E entity, Field field) {
-    try {
-      field.setAccessible(true);
-      K id = (K) field.get((Object) entity);
-      return id;
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException(e);
-    }
   }
 }
