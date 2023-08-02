@@ -12,7 +12,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import philo.magicsproutjpa.core.exception.MimicJpaCrudException;
+import philo.magicsproutjpa.core.exception.MimicInnerException;
 import philo.magicsproutjpa.core.exception.MimicJpaInnerException;
 import philo.magicsproutjpa.core.support.VoidFunction;
 
@@ -52,7 +52,7 @@ public abstract class NonCacheMimicJpaRepository<E, K> {
       if (transaction.isActive()) {
         transaction.rollback();
       }
-      throw new MimicJpaCrudException(e);
+      throw new MimicInnerException(e);
     }
   }
 

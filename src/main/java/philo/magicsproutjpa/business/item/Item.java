@@ -1,4 +1,4 @@
-package philo.magicsproutjpa.domain;
+package philo.magicsproutjpa.business.item;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

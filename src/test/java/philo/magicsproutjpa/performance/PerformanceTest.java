@@ -9,9 +9,9 @@ import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import philo.magicsproutjpa.business.item.Item;
+import philo.magicsproutjpa.business.item.ItemRepository;
 import philo.magicsproutjpa.core.support.VoidFunction;
-import philo.magicsproutjpa.domain.Item;
-import philo.magicsproutjpa.domain.ItemRepository;
 import philo.magicsproutjpa.performance.sample.NonCacheItemRepository;
 
 /**
