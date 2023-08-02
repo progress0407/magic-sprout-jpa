@@ -102,7 +102,7 @@ class ItemRepositoryTest {
     itemRepository.save(item);
 
     // when
-    itemRepository.delete(item.getId());
+    itemRepository.deleteById(item.getId());
 
     // then
     List<Item> all = itemRepository.findAll();
