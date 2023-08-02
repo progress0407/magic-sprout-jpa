@@ -67,7 +67,9 @@ public abstract class MimicJpaRepository<E, K> {
    * 모든 엔티티를 찾아옵니다.
    */
   public List<E> findAll() {
-    String selectQuery = "select e from " + getEntityName() + " e";
+    // String.format("select e from %s e") // 기존 엔티티 매니저 로직
+    // 밑에는 제 로직
+    String selectQuery = "select e from " + getEntityName() + " e"; // 상수풀 자동 저장
 
     return entityManager
         .createQuery(selectQuery, getEntityType())
@@ -160,6 +162,14 @@ public abstract class MimicJpaRepository<E, K> {
     }
   }
 
+  /**
+   * ID Getter가 존재하는지 여부를 조회 합니다.
+   * <br>
+   * 검증 성공시 해당 Method를 반환합니다.
+   * @param entity 엔티티 타입 클래스
+   * @param fields 위 클래스에 속하는 filed들
+   * @return ID Getter Method
+   */
   private Method assertIdGetterExistsAndGet(Class<E> entity, Field[] fields) {
     return extractIdGetterMethod(entity, fields);
   }
