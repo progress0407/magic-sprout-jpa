@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import philo.magicsproutjpa.core.support.VoidFunction;
 import philo.magicsproutjpa.domain.Item;
 import philo.magicsproutjpa.domain.ItemRepository;
+import philo.magicsproutjpa.performance.sample.NonCacheItemRepository;
 
 /**
  * 성능에 관련된 테스트 입니다

@@ -1,4 +1,4 @@
-package philo.magicsproutjpa.performance;
+package philo.magicsproutjpa.performance.sample;
 
 import static java.util.Arrays.stream;
 
