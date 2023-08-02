@@ -12,6 +12,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import philo.magicsproutjpa.core.exception.MimicJpaCrudException;
 import philo.magicsproutjpa.core.exception.MimicJpaInnerException;
+import philo.magicsproutjpa.core.support.EntityManagerFactoryFacade;
 import philo.magicsproutjpa.core.support.MimicJpaReflectionUtils;
 import philo.magicsproutjpa.core.support.VoidFunction;
 
@@ -25,12 +26,16 @@ import philo.magicsproutjpa.core.support.VoidFunction;
 @Slf4j
 public abstract class MimicJpaRepository<E, K> {
 
+  private static final String SELECT_QUERY_STRING = "select e from %s e";
+  private static final String DELETE_QUERY_STRING = "delete from %s";
+  private static final String COUNT_QUERY_STRING = "select count(e) from %s e";
+
   private final EntityManager entityManager = EntityManagerFactoryFacade.createEntityManager();
 
   private Method idGetterMethodCache = null; // 도메인 리포지토리 생성시 자동 초기화
 
   protected MimicJpaRepository() {
-    Class<E> entityType = getEntityType();
+    Class<E> entityType = entityType();
     Field[] fields = entityType.getDeclaredFields();
 
     assertIdFieldExists(fields);
@@ -62,12 +67,10 @@ public abstract class MimicJpaRepository<E, K> {
    * 모든 엔티티를 찾아옵니다.
    */
   public List<E> findAll() {
-    // String.format("select e from %s e") // 기존 엔티티 매니저 로직
-    // 밑에는 제 로직
-    String selectQuery = "select e from " + getEntityName() + " e"; // 상수풀 자동 저장
+    String selectQuery = String.format(SELECT_QUERY_STRING, entityName());
 
     return entityManager
-        .createQuery(selectQuery, getEntityType())
+        .createQuery(selectQuery, entityType())
         .getResultList();
   }
 
@@ -77,8 +80,7 @@ public abstract class MimicJpaRepository<E, K> {
    * 이때 엔티티는 영속화됩니다.
    */
   public E findById(K id) {
-    Class<E> entityType = getEntityType();
-
+    Class<E> entityType = entityType();
     return entityManager.find(entityType, id);
   }
 
@@ -86,7 +88,7 @@ public abstract class MimicJpaRepository<E, K> {
    * 모든 엔티티를 제거합니다.
    */
   public void deleteAll() {
-    String deleteQuery = "delete from " + getEntityName();
+    String deleteQuery = String.format(DELETE_QUERY_STRING, entityName());
     executeInTransaction(() -> entityManager.createQuery(deleteQuery).executeUpdate());
   }
 
@@ -94,7 +96,7 @@ public abstract class MimicJpaRepository<E, K> {
    * 특정 엔티티를 키 값으로 지웁니다.
    */
   public void deleteById(K id) {
-    E entity = entityManager.find(getEntityType(), id);
+    E entity = entityManager.find(entityType(), id);
     executeInTransaction(() -> entityManager.remove(entity));
   }
 
@@ -104,7 +106,7 @@ public abstract class MimicJpaRepository<E, K> {
    * RDBMS 관점에서는 엔티티와 연결된 테이블의 모든 레코드를 조회합니다.
    */
   public long count() {
-    String countQuery = "select count(e) from " + getEntityName() + " e";
+    String countQuery = String.format(COUNT_QUERY_STRING, entityName());
     return entityManager
         .createQuery(countQuery, Long.class)
         .getSingleResult();
@@ -153,18 +155,18 @@ public abstract class MimicJpaRepository<E, K> {
 
   private boolean isNewEntity(K id) {
     return id == null
-        || entityManager.find(getEntityType(), id) == null;
+        || entityManager.find(entityType(), id) == null;
   }
 
   private K getIdValue(E entity) {
     return delegateMethodInvoke(entity, idGetterMethodCache);
   }
 
-  private Class<E> getEntityType() {
+  private Class<E> entityType() {
     return MimicJpaReflectionUtils.getEntityType(this.getClass()); // delegate
   }
 
-  private String getEntityName() {
-    return getEntityType().getSimpleName();
+  private String entityName() {
+    return entityType().getSimpleName();
   }
 }
