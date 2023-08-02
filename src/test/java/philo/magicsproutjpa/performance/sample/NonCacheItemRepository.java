@@ -1,6 +1,6 @@
 package philo.magicsproutjpa.performance.sample;
 
-import philo.magicsproutjpa.domain.Item;
+import philo.magicsproutjpa.business.item.Item;
 
 public class NonCacheItemRepository extends NonCacheMimicJpaRepository<Item, Long> {
 }
