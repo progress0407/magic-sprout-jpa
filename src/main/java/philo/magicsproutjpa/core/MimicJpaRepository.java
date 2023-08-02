@@ -11,6 +11,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import philo.magicsproutjpa.core.exception.MimicJpaCrudException;
+import philo.magicsproutjpa.core.exception.MimicJpaInitException;
 import philo.magicsproutjpa.core.exception.MimicJpaInnerException;
 import philo.magicsproutjpa.core.support.EntityManagerFactoryFacade;
 import philo.magicsproutjpa.core.support.MimicJpaReflectionUtils;
@@ -114,12 +115,12 @@ public abstract class MimicJpaRepository<E, K> {
 
   private void executeInTransaction(VoidFunction function) {
     EntityTransaction transaction = entityManager.getTransaction();
-    
+
     try {
       transaction.begin();
       function.execute(); // Execute Actual Query
       transaction.commit();
-      
+
     } catch (Exception e) {
       if (transaction.isActive()) {
         transaction.rollback();
@@ -131,12 +132,12 @@ public abstract class MimicJpaRepository<E, K> {
 
   private void assertIdFieldExists(Field[] fields) {
     long idFieldCount = getIdFieldCount(fields);
-    
+
     if (idFieldCount == 0) {
-      throw new MimicJpaInnerException("Id field not found");
+      throw new MimicJpaInitException("Id field not found");
 
     } else if (idFieldCount >= 2) {
-      throw new MimicJpaInnerException("Multiple Id fields found");
+      throw new MimicJpaInitException("Multiple Id fields found");
     }
   }
 
@@ -150,7 +151,11 @@ public abstract class MimicJpaRepository<E, K> {
    * @return ID Getter Method
    */
   private Method assertIdGetterExistsAndGet(Class<E> entity, Field[] fields) {
-    return extractIdGetterMethod(entity, fields);
+    try {
+      return extractIdGetterMethod(entity, fields);
+    } catch (MimicJpaInnerException e) { // 예외 전환
+      throw new MimicJpaInitException("Id getter method should exist", e);
+    }
   }
 
   private boolean isNewEntity(K id) {
