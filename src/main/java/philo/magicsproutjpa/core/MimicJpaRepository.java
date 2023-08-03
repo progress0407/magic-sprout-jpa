@@ -13,6 +13,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import philo.magicsproutjpa.core.exception.MimicInnerException;
 import philo.magicsproutjpa.core.exception.MimicJpaInitException;
@@ -120,32 +121,50 @@ public abstract class MimicJpaRepository<E, K> {
   }
 
   /**
-   * Query Method
+   * Spring Data JPA의 Query Method와 유사한 기능을 제공합니다.
+   * <br>
+   * 특정 필드 이름으로 찾기 혹은 And 조건으로 찾기 등의 기능을 지원합니다.
+   * <br>
+   * findBy 혹은 find로 시작하는 메서드를 작성후 카멜케이스로 필드명을 적습니다.
+   * <br>
+   * [예시]
+   * <br>
+   * findByName: name 필드를 기준으로 찾습니다.
+   * <br>
+   * findAge age 필드를 기준으로 찾습니다.
+   * <br>
+   * findByNameAndAge 에서 name과 age를 and 조건으로 찾습니다.
+   * <br>
+   * Spring Data JPA와 달리 invokeQueryMethod 메서드에게 위임하는 방식으로 구현해야 합니다.
+   * <br>
+   * @param values
+   * @return
    */
-  protected List<E> invokeQueryMethod(Object... conditionValue) {
-    // 위는 없앨 예정
+  protected List<E> invokeQueryMethod(Object... values) {
     String methodName = searchMethodName();
+    List<String> keys = extractConditionKeys(methodName);
+    Map<String, Object> keyValuePairs = mapWhereClauseKeyValues(keys, values);
+    String queryString = buildQueryString(keys, keyValuePairs);
+    TypedQuery<E> query = createQuery(keyValuePairs, queryString);
+    return query.getResultList();
+  }
 
-    List<String> conditionKeys = extractConditionKeys(methodName);
-    LinkedHashMap<String, Object> keyValuePairs = mapWhereClauseKeyValues(conditionKeys,
-        conditionValue);
-    String queryString = buildQueryString(conditionKeys, keyValuePairs);
-
+  private TypedQuery<E> createQuery(Map<String, Object> keyValuePairs, String queryString) {
     TypedQuery<E> query = entityManager.createQuery(queryString, entityType());
     for (var entry : keyValuePairs.entrySet()) {
       query.setParameter(entry.getKey(), entry.getValue());
     }
-
-    List<E> resultList = query.getResultList();
-
-    return resultList;
+    return query;
   }
 
-  private String buildQueryString(List<String> conditionKeys,
-      LinkedHashMap<String, Object> whereClauseKeyValues) {
-    String firstQueryPiece = String.format(String.format("select e from %s e where ", entityName()));
+  private String buildQueryString(
+      List<String> keys,
+      Map<String, Object> whereClauseKeyValues
+  ) {
+    String firstQueryPiece = String.format(
+        String.format("select e from %s e where ", entityName()));
 
-    List<String> keyStatements = whereClauseKeyValues.keySet().stream()
+    List<String> keyStatements = keys.stream()
         .map(key -> String.format("e.%s = :%s", key, key))
         .toList();
 
@@ -193,6 +212,14 @@ public abstract class MimicJpaRepository<E, K> {
     }
   }
 
+  /**
+   * 문자열에서 유의미한 필드명을 추출합니다.
+   * <br>
+   * 예를들어 "findByNameAndAge"에서 ["name", "age"]를 추출합니다.
+   *
+   * @param methodName 메서드 이름
+   * @return 필드 이름들
+   */
   private static List<String> extractConditionKeys(String methodName) {
     String whereClause = methodName.replaceFirst("findBy|find", "");
     return stream(whereClause.split("And"))
