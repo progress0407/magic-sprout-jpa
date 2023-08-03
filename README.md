@@ -4,8 +4,9 @@
 
 Spring Data JPA의 인터페이스와 같은 역할을 하는 기능을 간략하게 만든 프로젝트이다
 
-특정 클래스를 상속하면 save, findAll, findById, delete, deleteById 등의 메서드를 구현하지 않더라도 사용할 수 있다
-
+- MimicJpaRepository를 상속하면 save, findAll 등 **CRUD 메서드**를 구현하지 않더라도 **자동으로 제공**되어 편리하게 사용할 수 있다
+- **Query Method** 기능을 지원한다
+  - findByName 등을 작성하면 name에 해당하는 필드를 기준으로 조회한다
 
 ## [이 프로젝트를 만든 이유]
 
@@ -25,13 +26,19 @@ Git Repository를 병합하고 옮기는 과정에서 일부 유실된 코드도
 
 GPT 4.0 + 영어 질문으로 해결한 케이스이다
 
-## [OOP] 캡슐화를 생각함
+### [OOP] 캡슐화를 생각함
 
 Reflection + setAccessible(true)를 사용하면 쉽게 접근할 수 있지만 캡슐화를 위반하므로
 
 getter메서드가 있는지를 확인
 
-## [성능] 성능을 고려하려고 노력 (실패)
+### [기술 스택] 스프링에 의존하지 않고 작성
+
+Spring Data의 기능을 스스로 구현해보고자 하는 목적으로 만든 것이므로 Spring의 기능을 사용하지 않았다
+
+<img src="https://github.com/progress0407/progress0407/assets/66164361/e592d2ff-0b4e-4b0a-b250-210291a230c8" width="600">
+
+### [성능] 성능을 고려하려고 노력 (실패)
 
 PK의 Getter가 있는지 확인하는 과정에서 **리플렉션 작업**을 많이 수행하기 때문에 많은 오버헤드가 있을 것으로 생각됨   
 따라서 이것을 캐싱해서 사용하는 쪽으로 변경  

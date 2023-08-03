@@ -24,6 +24,16 @@ import philo.magicsproutjpa.core.support.VoidFunction;
 
 /**
  * SimpleJpaRepository 처럼 JPA의 기능을 모방한 클래스입니다.
+ * <br>
+ * 해당 클래스를 구현하는 것만으로 편리하게 JPA 기능을 사용할 수 있습니다.
+ * <br>
+ * 기본적인 CRUD 기능을 지원합니다.
+ * <br>
+ * 구체적으로 save(entity), findAll(), findByID(id), count(), delete(entity), deleteAll() 메서드를 지원합니다.
+ * <br>
+ * 또한 Spring Data에서 지원하는 Query Method 기능을 일부 제공합니다.
+ * <br>
+ * findByName 등을 작성하면 해당 이름을 가진 필드를 기준으로 검색하는 메서드를 자동으로 생성합니다.
  *
  * @param <E> the type of the entity
  * @param <K> the type of the entity's identifier(Primary Key)
@@ -93,6 +103,18 @@ public abstract class MimicJpaRepository<E, K> {
   }
 
   /**
+   * 모든 엔티티의 갯수를 구합니다.
+   * <br>
+   * RDBMS 관점에서는 엔티티와 연결된 테이블의 모든 레코드를 조회합니다.
+   */
+  public long count() {
+    String countQuery = String.format(COUNT_QUERY_STRING, entityName());
+    return entityManager
+        .createQuery(countQuery, Long.class)
+        .getSingleResult();
+  }
+
+  /**
    * 모든 엔티티를 제거합니다.
    */
   public void deleteAll() {
@@ -106,18 +128,6 @@ public abstract class MimicJpaRepository<E, K> {
   public void deleteById(K id) {
     E entity = entityManager.find(entityType(), id);
     executeInTransaction(() -> entityManager.remove(entity));
-  }
-
-  /**
-   * 모든 엔티티의 갯수를 구합니다.
-   * <br>
-   * RDBMS 관점에서는 엔티티와 연결된 테이블의 모든 레코드를 조회합니다.
-   */
-  public long count() {
-    String countQuery = String.format(COUNT_QUERY_STRING, entityName());
-    return entityManager
-        .createQuery(countQuery, Long.class)
-        .getSingleResult();
   }
 
   /**
