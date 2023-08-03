@@ -50,7 +50,30 @@ class QueryMethodRepositoryTest {
     personRepository.save(person2);
 
     // when
-    List<Person> foundPeople = personRepository.findByBirthYear(87);
+    List<Person> foundPeople = personRepository.findBirthYear(87);
+
+    // then
+    Person foundFirstPerson = foundPeople.get(0);
+
+    assertAll(
+        () -> assertThat(foundPeople).hasSize(1),
+        () -> assertThat(foundFirstPerson.getId()).isEqualTo(person2.getId())
+    );
+  }
+
+  @DisplayName("[Query Method:: 다중 조건] 이름과 나이를 기준으로 찾을 수 있다")
+  @Test
+  void queryMethodByNameAndAge() {
+    // given
+    Person person1 = new Person("Philo", 93);
+    Person person2 = new Person("IU", 93);
+    Person person3 = new Person("Jay Park", 87);
+    personRepository.save(person1);
+    personRepository.save(person2);
+    personRepository.save(person3);
+
+    // when
+    List<Person> foundPeople = personRepository.findByNameAndBirthYear("IU", 93);
 
     // then
     Person foundFirstPerson = foundPeople.get(0);

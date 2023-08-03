@@ -8,9 +8,13 @@ import static philo.magicsproutjpa.core.support.MimicJpaReflectionUtils.getIdFie
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
+import jakarta.persistence.TypedQuery;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import philo.magicsproutjpa.core.exception.MimicInnerException;
 import philo.magicsproutjpa.core.exception.MimicJpaInitException;
@@ -120,25 +124,50 @@ public abstract class MimicJpaRepository<E, K> {
   /**
    * Query Method
    */
-  protected List<E> invokeQueryMethod(Object conditionValue) {
-    StackTraceElement[] stackTraceElements = currentThread().getStackTrace();
-    StackTraceElement previousMethod = stackTraceElements[2];
+  protected List<E> invokeQueryMethod(Object... conditionValue) {
     // 위는 없앨 예정
-    String methodName =
-        stream(currentThread().getStackTrace())
-            .filter(stackTraceElement -> stackTraceElement.getClassName()
-                .equals(domainRepositoryClassCache.getName()))
-            .map(StackTraceElement::getMethodName)
-            .findAny()
-            .orElseThrow(MimicInnerException::new);
-    String conditionKey = extractConditionKey(methodName);
-    String selectQueryFormat = "select e from %s e where e.%s = :%s";
-    String queryString = String.format(selectQueryFormat, entityName(), conditionKey, conditionKey);
-    List<E> resultList = entityManager.createQuery(queryString, entityType())
-        .setParameter(conditionKey, conditionValue)
-        .getResultList();
+    String methodName = searchMethodName();
+
+    List<String> conditionKeys = extractConditionKeys(methodName);
+
+
+    HashMap<String, Object> map = new HashMap<>();
+    IntStream.range(0, conditionKeys.size())
+        .forEach(it -> map.put(conditionKeys.get(it), conditionValue[it]));
+
+
+    StringBuilder sb = new StringBuilder("select e from %s e where e.%s = :%s");
+    sb.append(" and e.%s = :%s".repeat(map.size() - 1));
+    String queryFormat = sb.toString();
+
+
+
+    String[] doubledKeys = conditionKeys.stream().flatMap(it -> Stream.of(it, it)).toArray(String[]::new);
+
+    String[] formatParams = new String[doubledKeys.length + 1];
+    formatParams[0] = entityName();
+    System.arraycopy(doubledKeys, 0, formatParams, 1, doubledKeys.length);
+
+    String queryString = String.format(queryFormat, formatParams);
+
+
+    TypedQuery<E> query = entityManager.createQuery(queryString, entityType());
+    for (String key : map.keySet()) {
+      query.setParameter(key, map.get(key));
+    }
+
+    List<E> resultList = query.getResultList();
 
     return resultList;
+  }
+
+  private String searchMethodName() {
+    return stream(currentThread().getStackTrace())
+        .filter(stackTraceElement -> stackTraceElement.getClassName()
+            .equals(domainRepositoryClassCache.getName()))
+        .map(StackTraceElement::getMethodName)
+        .findAny()
+        .orElseThrow(MimicInnerException::new);
   }
 
   private void executeInTransaction(VoidFunction function) {
@@ -158,11 +187,11 @@ public abstract class MimicJpaRepository<E, K> {
     }
   }
 
-  private static String extractConditionKey(String methodName) {
+  private static List<String> extractConditionKeys(String methodName) {
     String whereClause = methodName.replaceFirst("findBy|find", "");
-    String firstLetterLowerCase = whereClause.substring(0, 1).toLowerCase();
-    String extraLetters = whereClause.substring(1);
-    return firstLetterLowerCase + extraLetters;
+    return stream(whereClause.split("And"))
+        .map(word -> word.substring(0, 1).toLowerCase() + word.substring(1))
+        .toList();
   }
 
   private void assertIdFieldExist(Field[] fields) {

@@ -9,7 +9,12 @@ public class PersonRepository extends MimicJpaRepository<Person, Long> {
     return invokeQueryMethod(name);
   }
 
-  public List<Person> findByBirthYear(int age) {
+
+  public List<Person> findBirthYear(int age) {
     return invokeQueryMethod(age);
+  }
+
+  public List<Person> findByNameAndBirthYear(String name, int age) {
+    return invokeQueryMethod(name, age);
   }
 }
