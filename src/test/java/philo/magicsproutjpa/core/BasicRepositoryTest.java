@@ -128,4 +128,24 @@ class BasicRepositoryTest {
     // then
     assertThat(recordCount).isEqualTo(3);
   }
+
+
+  @DisplayName("[Query Method] name을 기준으로 찾을 수 있다")
+  @Test
+  void queryMethod() {
+    // given
+    Item item = new Item("black jean");
+    itemRepository.save(item);
+
+    // when
+    List<Item> foundItems = itemRepository.findByName(item.getName());
+
+    // then
+    Item foundFirstItem = foundItems.get(0);
+
+    assertAll(
+        () -> assertThat(foundItems).hasSize(1),
+        () -> assertThat(foundFirstItem.getId()).isEqualTo(item.getId())
+    );
+  }
 }
