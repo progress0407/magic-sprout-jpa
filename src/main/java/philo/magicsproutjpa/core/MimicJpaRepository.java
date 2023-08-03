@@ -11,10 +11,8 @@ import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.TypedQuery;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import philo.magicsproutjpa.core.exception.MimicInnerException;
 import philo.magicsproutjpa.core.exception.MimicJpaInitException;
@@ -129,31 +127,13 @@ public abstract class MimicJpaRepository<E, K> {
     String methodName = searchMethodName();
 
     List<String> conditionKeys = extractConditionKeys(methodName);
-
-
-    HashMap<String, Object> map = new HashMap<>();
-    IntStream.range(0, conditionKeys.size())
-        .forEach(it -> map.put(conditionKeys.get(it), conditionValue[it]));
-
-
-    StringBuilder sb = new StringBuilder("select e from %s e where e.%s = :%s");
-    sb.append(" and e.%s = :%s".repeat(map.size() - 1));
-    String queryFormat = sb.toString();
-
-
-
-    String[] doubledKeys = conditionKeys.stream().flatMap(it -> Stream.of(it, it)).toArray(String[]::new);
-
-    String[] formatParams = new String[doubledKeys.length + 1];
-    formatParams[0] = entityName();
-    System.arraycopy(doubledKeys, 0, formatParams, 1, doubledKeys.length);
-
-    String queryString = String.format(queryFormat, formatParams);
-
+    LinkedHashMap<String, Object> keyValuePairs = mapWhereClauseKeyValues(conditionKeys,
+        conditionValue);
+    String queryString = buildQueryString(conditionKeys, keyValuePairs);
 
     TypedQuery<E> query = entityManager.createQuery(queryString, entityType());
-    for (String key : map.keySet()) {
-      query.setParameter(key, map.get(key));
+    for (var entry : keyValuePairs.entrySet()) {
+      query.setParameter(entry.getKey(), entry.getValue());
     }
 
     List<E> resultList = query.getResultList();
@@ -161,13 +141,43 @@ public abstract class MimicJpaRepository<E, K> {
     return resultList;
   }
 
+  private String buildQueryString(List<String> conditionKeys,
+      LinkedHashMap<String, Object> whereClauseKeyValues) {
+    int cnt = 0;
+    StringBuilder queryBuilder = new StringBuilder();
+    for (String key : whereClauseKeyValues.keySet()) {
+      if (cnt == 0) {
+        String firstQuery =
+            String.format("select e from %s e where e.%s = :%s", entityName(), key, key);
+        queryBuilder.append(firstQuery);
+      } else {
+        queryBuilder.append(String.format(" and e.%s = :%s", key, key));
+      }
+      cnt++;
+    }
+    return queryBuilder.toString();
+  }
+
+  private LinkedHashMap<String, Object> mapWhereClauseKeyValues(
+      List<String> conditionKeys,
+      Object[] conditionValue) {
+    LinkedHashMap<String, Object> keyValuePairs = new LinkedHashMap<>();
+    for (int i = 0; i < conditionKeys.size(); i++) {
+      keyValuePairs.put(conditionKeys.get(i), conditionValue[i]);
+    }
+    return keyValuePairs;
+  }
+
   private String searchMethodName() {
     return stream(currentThread().getStackTrace())
-        .filter(stackTraceElement -> stackTraceElement.getClassName()
-            .equals(domainRepositoryClassCache.getName()))
+        .filter(this::equalsClassName)
         .map(StackTraceElement::getMethodName)
         .findAny()
         .orElseThrow(MimicInnerException::new);
+  }
+
+  private boolean equalsClassName(StackTraceElement stackTraceElement) {
+    return stackTraceElement.getClassName().equals(domainRepositoryClassCache.getName());
   }
 
   private void executeInTransaction(VoidFunction function) {
