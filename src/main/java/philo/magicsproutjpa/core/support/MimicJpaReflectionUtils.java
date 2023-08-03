@@ -69,7 +69,6 @@ public class MimicJpaReflectionUtils {
   }
 
   /**
-   *
    * @param targetObject 실행할 객체
    * @param method 실행할 메서드
    * @return 해당 객체의 메서드의 반환 값

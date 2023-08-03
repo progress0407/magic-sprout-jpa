@@ -61,24 +61,29 @@ public abstract class MimicJpaRepository<E, K> {
   }
 
   /**
-   * 기존에 엔티티가 존재하지 않았다면 영속화를 수행하고
-   * <br>
-   * 그렇지 않다면 변경을 수행합니다.
+   * 기존에 엔티티가 존재하지 않았다면 영속화를 하고 그렇지 않다면 변경을 수행합니다.
    * <br>
    * 여기서 영속화의 여부는 영속화가 되어있거나 DB에 있는 것을 기준으로 합니다.
    * <br>
-   * 기존 JPA가 id가 null인지를 기준으로 하는 것과는 다르게 동작합니다.
+   * 기존 Sping Data JPA가 id가 null인지를 기준으로 하는 것과는 다르게 동작합니다.
+   * <br>
+   * 또 Spring Data JPA과 다르게 반환 타입이 boolean입니다.
+   * <br>
+   * 저장을 할 경우 참이며 변경을 할 경우 거짓을 반환합니다.
+   *
+   * @param entity 영속 후 DB에 저장할 엔티티
+   * @return 저장 여부 (true: persist 호출, false: merge 호출)
    */
-  public E save(E entity) {
+  public boolean save(E entity) {
     K id = getIdValue(entity);
 
     if (isNewEntity(id)) {
       executeInTransaction(() -> entityManager.persist(entity));
-    } else {
-      executeInTransaction(() -> entityManager.merge(entity));
+      return true;
     }
 
-    return entity;
+    executeInTransaction(() -> entityManager.merge(entity));
+    return false;
   }
 
   /**
@@ -147,6 +152,7 @@ public abstract class MimicJpaRepository<E, K> {
    * <br>
    * Spring Data JPA와 달리 invokeQueryMethod 메서드에게 위임하는 방식으로 구현해야 합니다.
    * <br>
+   *
    * @param values
    * @return
    */
@@ -270,6 +276,11 @@ public abstract class MimicJpaRepository<E, K> {
         || entityManager.find(entityType(), id) == null;
   }
 
+  /**
+   * 엔티티의 ID값을 불러옵니다
+   * @param entity
+   * @return ID값
+   */
   private K getIdValue(E entity) {
     return delegateMethodInvoke(entity, idGetterMethodCache);
   }

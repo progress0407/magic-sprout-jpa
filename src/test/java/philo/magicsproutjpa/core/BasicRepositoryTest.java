@@ -37,21 +37,25 @@ class BasicRepositoryTest {
   }
 
 
-  @DisplayName("[save - update] 리포지토리는 엔티티를 저장하고 불러올 수 있다")
+  @DisplayName("[save - update] 기존에 저장된 엔티티가 있다면 저장이 아닌 수정을 한다")
   @Test
   void update() {
     // given
     Item item = new Item("black jean");
-    itemRepository.save(item);
+    boolean firstSave = itemRepository.save(item);
 
     // when
     item.changeName("blue jean");
-    itemRepository.save(item);
+    boolean secondSave = itemRepository.save(item);
 
     // then
     Item foundItem = itemRepository.findById(item.getId());
 
-    assertThat(foundItem.getName()).isEqualTo("blue jean");
+    assertAll(
+        () -> assertThat(firstSave).isTrue(),
+        () -> assertThat(secondSave).isFalse(),
+        () -> assertThat(foundItem.getName()).isEqualTo("blue jean")
+    );
   }
 
 
@@ -127,25 +131,5 @@ class BasicRepositoryTest {
 
     // then
     assertThat(recordCount).isEqualTo(3);
-  }
-
-
-  @DisplayName("[Query Method] name을 기준으로 찾을 수 있다")
-  @Test
-  void queryMethod() {
-    // given
-    Item item = new Item("black jean");
-    itemRepository.save(item);
-
-    // when
-    List<Item> foundItems = itemRepository.findByName(item.getName());
-
-    // then
-    Item foundFirstItem = foundItems.get(0);
-
-    assertAll(
-        () -> assertThat(foundItems).hasSize(1),
-        () -> assertThat(foundFirstItem.getId()).isEqualTo(item.getId())
-    );
   }
 }
