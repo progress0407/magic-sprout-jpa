@@ -84,6 +84,28 @@ public class MimicJpaReflectionUtils {
     }
   }
 
+  /**
+   * 해당 엔티티의 필드의 값을 가져옵니다.
+   * <br>
+   * private 메서드의 접근 권한을 해제합니다.
+   * <br>
+   * 현재는 캡슐화 위반이라 판단하여 사용하지 않습니다.
+   * @param entity
+   * @param field
+   * @return 해당 필드의 값
+   * @param <E> Entity type
+   * @param <V> return Value
+   */
+  public static <E, V> V extractId(E entity, Field field) {
+    try {
+      field.setAccessible(true);
+      V id = (V) field.get((Object) entity);
+      return id;
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   private static String getIdGetterMethodName(String idFieldName) {
     return "get" + idFieldName.substring(0, 1).toUpperCase() + idFieldName.substring(1);
   }
@@ -93,16 +115,6 @@ public class MimicJpaReflectionUtils {
     Type[] typeArguments = superclass.getActualTypeArguments();
     Type typeArgument = typeArguments[genericIndex];
     return (Class<T>) typeArgument;
-  }
-
-  public static <E, K> K extractId(E entity, Field field) {
-    try {
-      field.setAccessible(true);
-      K id = (K) field.get((Object) entity);
-      return id;
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   private static boolean hasIdAnnotation(Field field) {

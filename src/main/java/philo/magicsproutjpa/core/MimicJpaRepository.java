@@ -1,5 +1,7 @@
 package philo.magicsproutjpa.core;
 
+import static java.lang.Thread.currentThread;
+import static java.util.Arrays.stream;
 import static philo.magicsproutjpa.core.support.MimicJpaReflectionUtils.delegateMethodInvoke;
 import static philo.magicsproutjpa.core.support.MimicJpaReflectionUtils.extractIdGetterMethod;
 import static philo.magicsproutjpa.core.support.MimicJpaReflectionUtils.getIdFieldCount;
@@ -10,7 +12,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import philo.magicsproutjpa.core.exception.MimicJpaCrudException;
+import philo.magicsproutjpa.core.exception.MimicInnerException;
 import philo.magicsproutjpa.core.exception.MimicJpaInitException;
 import philo.magicsproutjpa.core.exception.MimicJpaInnerException;
 import philo.magicsproutjpa.core.support.EntityManagerFactoryFacade;
@@ -33,14 +35,16 @@ public abstract class MimicJpaRepository<E, K> {
 
   private final EntityManager entityManager = EntityManagerFactoryFacade.createEntityManager();
 
+  private Class<? extends MimicJpaRepository<E, K>> domainRepositoryClassCache;
   private Method idGetterMethodCache = null; // 도메인 리포지토리 생성시 자동 초기화
 
   protected MimicJpaRepository() {
     Class<E> entityType = entityType();
     Field[] fields = entityType.getDeclaredFields();
 
-    assertIdFieldExists(fields);
-    idGetterMethodCache = assertIdGetterExistsAndGet(entityType, fields);
+    assertIdFieldExist(fields);
+    idGetterMethodCache = assertIdGetterExistAndGet(entityType, fields);
+    domainRepositoryClassCache = getDomainRepository();
   }
 
   /**
@@ -113,6 +117,30 @@ public abstract class MimicJpaRepository<E, K> {
         .getSingleResult();
   }
 
+  /**
+   * Query Method
+   */
+  protected List<E> invokeQueryMethod(Object conditionValue) {
+    StackTraceElement[] stackTraceElements = currentThread().getStackTrace();
+    StackTraceElement previousMethod = stackTraceElements[2];
+    // 위는 없앨 예정
+    String methodName =
+        stream(currentThread().getStackTrace())
+            .filter(stackTraceElement -> stackTraceElement.getClassName()
+                .equals(domainRepositoryClassCache.getName()))
+            .map(StackTraceElement::getMethodName)
+            .findAny()
+            .orElseThrow(MimicInnerException::new);
+    String conditionKey = extractConditionKey(methodName);
+    String selectQueryFormat = "select e from %s e where e.%s = :%s";
+    String queryString = String.format(selectQueryFormat, entityName(), conditionKey, conditionKey);
+    List<E> resultList = entityManager.createQuery(queryString, entityType())
+        .setParameter(conditionKey, conditionValue)
+        .getResultList();
+
+    return resultList;
+  }
+
   private void executeInTransaction(VoidFunction function) {
     EntityTransaction transaction = entityManager.getTransaction();
 
@@ -126,11 +154,18 @@ public abstract class MimicJpaRepository<E, K> {
         transaction.rollback();
         log.info("transaction rollback !");
       }
-      throw new MimicJpaCrudException(e);
+      throw new MimicInnerException(e);
     }
   }
 
-  private void assertIdFieldExists(Field[] fields) {
+  private static String extractConditionKey(String methodName) {
+    String whereClause = methodName.replaceFirst("findBy|find", "");
+    String firstLetterLowerCase = whereClause.substring(0, 1).toLowerCase();
+    String extraLetters = whereClause.substring(1);
+    return firstLetterLowerCase + extraLetters;
+  }
+
+  private void assertIdFieldExist(Field[] fields) {
     long idFieldCount = getIdFieldCount(fields);
 
     if (idFieldCount == 0) {
@@ -150,7 +185,7 @@ public abstract class MimicJpaRepository<E, K> {
    * @param fields 위 클래스에 속하는 filed들
    * @return ID Getter Method
    */
-  private Method assertIdGetterExistsAndGet(Class<E> entity, Field[] fields) {
+  private Method assertIdGetterExistAndGet(Class<E> entity, Field[] fields) {
     try {
       return extractIdGetterMethod(entity, fields);
     } catch (MimicJpaInnerException e) { // 예외 전환
@@ -173,5 +208,9 @@ public abstract class MimicJpaRepository<E, K> {
 
   private String entityName() {
     return entityType().getSimpleName();
+  }
+
+  private Class<? extends MimicJpaRepository<E, K>> getDomainRepository() {
+    return (Class<? extends MimicJpaRepository<E, K>>) this.getClass();
   }
 }

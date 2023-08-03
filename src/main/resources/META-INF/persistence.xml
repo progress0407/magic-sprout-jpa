@@ -4,6 +4,7 @@
   <persistence-unit name="magic-sprout-jpa" transaction-type="RESOURCE_LOCAL">
 
     <class>philo.magicsproutjpa.business.item.Item</class>
+    <class>philo.magicsproutjpa.business.person.Person</class>
 
     <properties>
       <property name="javax.persistence.jdbc.driver" value="org.h2.Driver"/>
