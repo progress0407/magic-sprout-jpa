@@ -143,19 +143,15 @@ public abstract class MimicJpaRepository<E, K> {
 
   private String buildQueryString(List<String> conditionKeys,
       LinkedHashMap<String, Object> whereClauseKeyValues) {
-    int cnt = 0;
-    StringBuilder queryBuilder = new StringBuilder();
-    for (String key : whereClauseKeyValues.keySet()) {
-      if (cnt == 0) {
-        String firstQuery =
-            String.format("select e from %s e where e.%s = :%s", entityName(), key, key);
-        queryBuilder.append(firstQuery);
-      } else {
-        queryBuilder.append(String.format(" and e.%s = :%s", key, key));
-      }
-      cnt++;
-    }
-    return queryBuilder.toString();
+    String firstQueryPiece = String.format(String.format("select e from %s e where ", entityName()));
+
+    List<String> keyStatements = whereClauseKeyValues.keySet().stream()
+        .map(key -> String.format("e.%s = :%s", key, key))
+        .toList();
+
+    String andStatement = String.join(" and ", keyStatements);
+
+    return firstQueryPiece + andStatement;
   }
 
   private LinkedHashMap<String, Object> mapWhereClauseKeyValues(
