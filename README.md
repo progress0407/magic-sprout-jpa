@@ -10,22 +10,32 @@ Spring Data JPA의 인터페이스와 같은 역할을 하는 기능을 간략�
 
 ### [ CRUD Auto Generate ]
 
+**[ Implementation ]**
+
 ```java
 public class ItemRepository extends MimicJpaRepository<Item, Long> {
-
 }
 ```
 
-```java
-Item item = new Item("black jean");
+**[ Usage ]**
 
-itemRepository.save(item1); // create or update
+```java
+// Create or Update
+itemRepository.save(new Item("black jean"));
+        
+// Read
 Item foundItem = itemRepository.findById(1);
-List<Item> all = itemRepository.findAll();
+List<Item> allItems = itemRepository.findAll();
 long recordCount = itemRepository.count();
+
+// Delete
+itemRepository.deleteById(1L);
+itemRepository.deleteAll();
 ```
 
 ### [ Query Method ]
+
+**[ Implementation ]**
 
 ```java
 public class PersonRepository extends MimicJpaRepository<Person, Long> {
@@ -45,6 +55,7 @@ public class PersonRepository extends MimicJpaRepository<Person, Long> {
 }
 ```
 
+**[ Usage ]**
 
 ```java
 List<Person> foundPeople = personRepository.findByName("IU");
